@@ -20,7 +20,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.env
+
 
 # Node/Web
 web/node_modules/
