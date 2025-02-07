@@ -9,7 +9,7 @@ import time
 import requests
 import psutil
 from pathlib import Path
-from docker_handler import stop_container
+from docker_handler import stop_container, get_resource_path
 from api import create_app
 from webview.util import escape_string
 
@@ -63,9 +63,9 @@ class Api:
 
 class TakManagerApp:
     def __init__(self, dev_mode=False, api_port=8000):
-        self.compose_file = "docker-compose.prod.yml"
+        self.compose_file = str(Path(get_resource_path("docker-compose.prod.yml")))
         self.window = None
-        self.web_dir = Path(__file__).parent / "web"
+        self.web_dir = Path(get_resource_path("web"))
         self.dev_mode = dev_mode
         self.api_port = api_port
         self.processes = []
@@ -215,9 +215,10 @@ class TakManagerApp:
             if self.dev_mode:
                 # Start Vite dev server
                 try:
+                    npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
                     vite_process = subprocess.Popen(
-                        ['npm', 'run', 'dev'],
-                        cwd=self.web_dir,
+                        [npm_cmd, 'run', 'dev'],
+                        cwd=str(self.web_dir),
                         start_new_session=True
                     )
                     self.processes.append(vite_process)
@@ -227,7 +228,7 @@ class TakManagerApp:
 
                 # Start FastAPI development server
                 api_process = subprocess.Popen(
-                    [sys.executable, __file__, '--dev', '--port', str(self.api_port)],
+                    [sys.executable, str(Path(__file__)), '--dev', '--port', str(self.api_port)],
                     start_new_session=True
                 )
                 self.processes.append(api_process)
@@ -245,13 +246,15 @@ class TakManagerApp:
 
             else:
                 # Build frontend for production
-                if not (self.web_dir / "dist").exists():
+                dist_dir = self.web_dir / "dist"
+                if not dist_dir.exists():
                     print("Building frontend...")
-                    subprocess.run(['npm', 'run', 'build'], cwd=self.web_dir, check=True)
+                    npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
+                    subprocess.run([npm_cmd, 'run', 'build'], cwd=str(self.web_dir), check=True)
                 
                 # Start FastAPI production server
                 api_process = subprocess.Popen(
-                    [sys.executable, __file__, '--port', str(self.api_port)],
+                    [sys.executable, str(Path(__file__)), '--port', str(self.api_port)],
                     start_new_session=True
                 )
                 self.processes.append(api_process)

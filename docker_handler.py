@@ -4,20 +4,41 @@ import docker
 import time
 from pathlib import Path
 import os
+import sys
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
 
 def start_docker_desktop():
-    """Start Docker Desktop application"""
+    """Start Docker Desktop application or service"""
     system = platform.system().lower()
     try:
         if system == "darwin":  # macOS
             subprocess.Popen(["open", "-a", "Docker"])
         elif system == "windows":  # Windows
             subprocess.Popen(["start", "Docker Desktop"], shell=True)
+        elif system == "linux":  # Linux
+            # Try systemd service first
+            try:
+                subprocess.run(['systemctl', '--user', 'start', 'docker'], check=True)
+            except subprocess.CalledProcessError:
+                try:
+                    # Try system-wide service
+                    subprocess.run(['sudo', 'systemctl', 'start', 'docker'], check=True)
+                except subprocess.CalledProcessError:
+                    print("Could not start Docker service. Please ensure Docker is installed and the service is enabled.")
+                    return False
         # Give Docker some time to start
         time.sleep(5)
         return True
     except Exception as e:
-        print(f"Failed to start Docker Desktop: {e}")
+        print(f"Failed to start Docker Desktop/Service: {e}")
         return False
 
 def check_docker_installed() -> bool:
@@ -41,8 +62,8 @@ def check_docker_running() -> bool:
 def find_and_load_docker_image():
     """Find and load the TAK Manager Docker image"""
     try:
-        # Find the image tar file
-        image_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "docker"
+        # Find the image tar file using the resource path
+        image_dir = Path(get_resource_path("docker"))
         tar_files = list(image_dir.glob("tak-manager-*.tar.gz"))
         
         if not tar_files:
@@ -85,6 +106,9 @@ def start_container(compose_file: str) -> dict:
         if not find_and_load_docker_image():
             return {"success": False, "error": "Failed to load Docker image"}
 
+        # Convert compose_file path to use correct path separators for the OS
+        compose_file = str(Path(compose_file))
+
         # Start container using docker-compose
         print("Starting TAK Server container...")
         result = subprocess.run(
@@ -106,6 +130,9 @@ def start_container(compose_file: str) -> dict:
 def stop_container(compose_file: str) -> dict:
     """Stop the TAK Manager container"""
     try:
+        # Convert compose_file path to use correct path separators for the OS
+        compose_file = str(Path(compose_file))
+        
         result = subprocess.run(
             ['docker', 'compose', '-f', compose_file, 'down'],
             capture_output=True,
