@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ConfigScreen } from './components/ConfigScreen';
-import { LoadingScreen } from './components/LoadingScreen';
 import { Button } from './ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
@@ -26,6 +25,21 @@ declare global {
   }
 }
 
+const BackgroundWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="relative min-h-screen bg-svg-background overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <img 
+        src="/tak.svg" 
+        alt="" 
+        className="w-full h-full max-w-[90vh] max-h-[90vh] object-contain opacity-50 blur-[2px]"
+      />
+    </div>
+    <div className="relative z-10 min-h-screen">
+      {children}
+    </div>
+  </div>
+);
+
 export const App: React.FC = () => {
   const [isDockerInstalled, setIsDockerInstalled] = useState<boolean | null>(null);
   const [isDockerRunning, setIsDockerRunning] = useState<boolean | null>(null);
@@ -33,6 +47,8 @@ export const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isContainerStarting, setIsContainerStarting] = useState(false);
   const [isApiReady, setIsApiReady] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [statusMessage, setStatusMessage] = useState<string>('Initializing...');
 
   // Wait for pywebview API to be ready
   useEffect(() => {
@@ -51,26 +67,34 @@ export const App: React.FC = () => {
     
     try {
       setError(null);
+      setStatusMessage('Checking Docker installation...');
       const installed = await api.checkDockerInstalled();
       setIsDockerInstalled(installed);
       
       if (installed) {
+        setStatusMessage('Checking if Docker is running...');
         const running = await api.checkDockerRunning();
         setIsDockerRunning(running);
 
         if (running) {
+          setStatusMessage('Checking configuration...');
           // Check if we have config and start container if we do
           const config = await api.getConfig();
           if (config.TAK_SERVER_INSTALL_DIR && config.BACKEND_PORT) {
+            setIsInitialLoad(false);
             setIsContainerStarting(true);
+            setStatusMessage('Starting TAK Manager container...');
             const result = await api.startContainer();
             if (!result.success) {
               setError(result.error || 'Failed to start container');
             } else if (result.port) {
+              setStatusMessage('Opening TAK Manager...');
               console.log('Opening TAK Manager on port:', result.port);
               window.pywebview.api.navigate(`http://localhost:${result.port}`);
             }
           }
+        } else {
+          setStatusMessage('Waiting for Docker to start...');
         }
       }
     } catch (error) {
@@ -110,14 +134,18 @@ export const App: React.FC = () => {
     if (!isApiReady) return;
     
     setIsLoading(true);
+    setStatusMessage('Saving configuration...');
     try {
       const result = await api.saveConfig(installDir, port);
       if (result.success) {
+        setIsInitialLoad(false);
         setIsContainerStarting(true);
+        setStatusMessage('Starting TAK Manager container...');
         const containerResult = await api.startContainer();
         if (!containerResult.success) {
           setError(containerResult.error || 'Failed to start container');
         } else if (containerResult.port) {
+          setStatusMessage('Opening TAK Manager...');
           console.log('Opening TAK Manager on port:', containerResult.port);
           window.pywebview.api.navigate(`http://localhost:${containerResult.port}`);
         }
@@ -135,97 +163,120 @@ export const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Checking Docker status...</p>
+      <BackgroundWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">{statusMessage}</p>
+          </div>
         </div>
-      </div>
+      </BackgroundWrapper>
     );
   }
 
   if (isContainerStarting) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Starting TAK Manager...</p>
+      <BackgroundWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">{statusMessage}</p>
+          </div>
         </div>
-      </div>
+      </BackgroundWrapper>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={checkDocker}
-              className="w-full"
-              variant="default"
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <BackgroundWrapper>
+        <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-destructive">Error</CardTitle>
+              <CardDescription>{error}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={checkDocker}
+                className="w-full"
+                variant="default"
+              >
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </BackgroundWrapper>
     );
   }
 
   if (isDockerInstalled === false) {
     return (
-      <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Docker Not Installed</CardTitle>
-            <CardDescription>
-              Docker is required to run TAK Manager
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertTitle>Installation Required</AlertTitle>
-              <AlertDescription>
-                Please install Docker Desktop to continue using TAK Manager.
-              </AlertDescription>
-            </Alert>
-            <div className="flex flex-col space-y-2">
-              <Button 
-                onClick={handleInstallDocker}
-                className="w-full"
-                variant="default"
-              >
-                Install Docker
-              </Button>
-              <Button 
-                onClick={checkDocker}
-                className="w-full"
-                variant="outline"
-              >
-                Check Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <BackgroundWrapper>
+        <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Docker Not Installed</CardTitle>
+              <CardDescription>
+                Docker is required to run TAK Manager
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertTitle>Installation Required</AlertTitle>
+                <AlertDescription>
+                  Please install Docker Desktop to continue using TAK Manager.
+                </AlertDescription>
+              </Alert>
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  onClick={handleInstallDocker}
+                  className="w-full"
+                  variant="default"
+                >
+                  Install Docker
+                </Button>
+                <Button 
+                  onClick={checkDocker}
+                  className="w-full"
+                  variant="outline"
+                >
+                  Check Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </BackgroundWrapper>
     );
   }
 
   if (isDockerRunning === false) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Starting Docker...</p>
+      <BackgroundWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">{statusMessage}</p>
+          </div>
         </div>
-      </div>
+      </BackgroundWrapper>
     );
   }
 
-  return <ConfigScreen onSaveConfig={handleSaveConfig} />;
+  return isInitialLoad ? (
+    <BackgroundWrapper>
+      <ConfigScreen onSaveConfig={handleSaveConfig} />
+    </BackgroundWrapper>
+  ) : (
+    <BackgroundWrapper>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">{statusMessage}</p>
+        </div>
+      </div>
+    </BackgroundWrapper>
+  );
 }; 

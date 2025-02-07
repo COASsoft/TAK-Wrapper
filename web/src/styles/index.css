@@ -25,6 +25,7 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
   --color-background: hsl(var(--background));
+  --color-svg-background: hsl(var(--svg-background));
   --color-foreground: hsl(var(--foreground));
 
   --color-primary: hsl(var(--primary));
@@ -158,6 +159,7 @@
  
   .dark {
     --background: 240 10% 3.9%;
+    --svg-background: 240 10% 7%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
