@@ -86,9 +86,9 @@ def select_directory():
     return ""
 
 def load_config() -> dict:
-    """Load configuration from .env file"""
+    """Load configuration from .env file located in the same directory as this script"""
     try:
-        env_path = Path(__file__).parent / '.env'
+        env_path = Path(__file__).parent / '.env'  # The .env file is loaded from the current script's directory
         if not env_path.exists():
             return {"TAK_SERVER_INSTALL_DIR": "", "BACKEND_PORT": ""}
 
@@ -106,9 +106,9 @@ def load_config() -> dict:
         return {"TAK_SERVER_INSTALL_DIR": "", "BACKEND_PORT": ""}
 
 def save_config(install_dir: str, port: str) -> bool:
-    """Update the .env file with new configuration"""
+    """Update the .env file located in the same directory as this script with new configuration"""
     try:
-        env_path = Path(__file__).parent / '.env'
+        env_path = Path(__file__).parent / '.env'  # The .env file is saved in the current script's directory
         if not env_path.exists():
             return False
 

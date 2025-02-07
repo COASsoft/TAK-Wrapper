@@ -296,14 +296,20 @@ def create_dev_app():
 
 def main():
     import argparse
+    import sys
+    
+    # Filter out the PyInstaller runtime path argument
+    filtered_args = [arg for arg in sys.argv if not arg.endswith('Frameworks/app.py')]
     
     parser = argparse.ArgumentParser(description='TAK Manager')
     parser.add_argument('--dev', action='store_true', help='Run in development mode')
     parser.add_argument('--port', type=int, default=8000, help='API port (default: 8000)')
-    args = parser.parse_args()
+    
+    # Use the filtered arguments for parsing
+    args = parser.parse_args(filtered_args[1:])  # Skip the first argument (script name)
 
-    # If no additional arguments are provided, run the full application
-    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == '--dev'):
+    # If no additional arguments are provided or only --dev, run the full application
+    if len(filtered_args) == 1 or (len(filtered_args) == 2 and filtered_args[1] == '--dev'):
         app = TakManagerApp(dev_mode=args.dev, api_port=args.port)
         try:
             app.run()
