@@ -112,13 +112,12 @@ def build_app():
         # Create debug launch script
         create_debug_script()
 
-        # Create distribution archive
+        # Create distribution archives
         dist_dir = Path('dist')
         if sys.platform == 'darwin':
             app_name = 'TAK Manager.app'
-            archive_name = 'TAK-Manager-macOS.zip'
             if (dist_dir / app_name).exists():
-                logging.info("Creating macOS distribution archive...")
+                logging.info("Creating macOS ZIP archive...")
                 shutil.make_archive(
                     str(dist_dir / 'TAK-Manager-macOS'),
                     'zip',
