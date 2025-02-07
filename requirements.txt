@@ -1,0 +1,12 @@
+# For macOS users with pyenv, first install tcl-tk:
+# brew install tcl-tk
+# Then reinstall python with tcl-tk support:
+# PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I/opt/homebrew/opt/tcl-tk/include' --with-tcltk-libs='-L/opt/homebrew/opt/tcl-tk/lib -ltcl8.6 -ltk8.6'" pyenv install 3.11.10
+
+pywebview>=4.4.1
+docker>=7.0.0
+python-dotenv>=1.0.0
+psutil>=5.9.8
+platformdirs>=4.1.0
+PyQt5>=5.15.16  # For native file dialogs
+requests>=2.31.0  # For server health checks
