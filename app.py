@@ -12,6 +12,22 @@ from pathlib import Path
 from docker_handler import stop_container, get_resource_path
 from api import create_app
 
+# Add Windows-specific imports at the top
+if sys.platform == 'win32':
+    import ctypes
+
+def hide_console():
+    """Hide the console window on Windows"""
+    if sys.platform == 'win32':
+        try:
+            # Get console window handle
+            console_window = ctypes.windll.kernel32.GetConsoleWindow()
+            # Hide the console window
+            if console_window:
+                ctypes.windll.user32.ShowWindow(console_window, 0)
+        except Exception as e:
+            print(f"Error hiding console: {e}")
+
 class Api:
     def __init__(self, app):
         self.window = None
@@ -306,6 +322,8 @@ def main():
     
     if is_packaged:
         # When packaged, always run in production mode with default port
+        # Hide console window at startup in production mode
+        hide_console()
         app = TakManagerApp(dev_mode=False, api_port=8000)
         try:
             app.run()

@@ -78,11 +78,11 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name=name,
-    debug=True,  # Enable debug
+    debug=False,  # Disable debug
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,  # Enable console for debugging
+    console=True,  # Enable console for proper process handling
     disable_windowed_traceback=False,
     argv_emulation=False,  # Disable argv emulation to fix argument parsing
     target_arch=None,
