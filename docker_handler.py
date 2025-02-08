@@ -60,26 +60,50 @@ def start_docker_desktop():
 
 def get_docker_binary():
     """Get the absolute path to the docker binary"""
-    # Common locations for Docker binary
-    docker_paths = [
-        '/usr/local/bin/docker',  # Homebrew installation
-        '/opt/homebrew/bin/docker',  # Apple Silicon Homebrew
-        '/usr/bin/docker',  # System installation
-    ]
+    system = platform.system().lower()
     
-    # First check if docker is in PATH
-    if os.environ.get('PATH'):
-        for path in os.environ['PATH'].split(os.pathsep):
-            docker_path = os.path.join(path, 'docker')
-            if os.path.isfile(docker_path) and os.access(docker_path, os.X_OK):
-                return docker_path
-    
-    # Then check common locations
-    for path in docker_paths:
-        if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
-    
-    return 'docker'  # Fallback to just 'docker' if not found
+    if system == "windows":
+        # Common Windows Docker paths
+        docker_paths = [
+            r"C:\Program Files\Docker\Docker\resources\bin\docker.exe",
+            r"C:\Program Files\Docker\Docker\resources\docker.exe",
+            r"C:\ProgramData\DockerDesktop\version-bin\docker.exe"
+        ]
+        
+        # First check if docker is in PATH
+        if os.environ.get('PATH'):
+            for path in os.environ['PATH'].split(os.pathsep):
+                docker_path = os.path.join(path, 'docker.exe')
+                if os.path.isfile(docker_path) and os.access(docker_path, os.X_OK):
+                    return docker_path
+        
+        # Then check common locations
+        for path in docker_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                return path
+        
+        return 'docker'  # Fallback to just 'docker' if not found
+    else:
+        # Unix-like systems (macOS, Linux)
+        docker_paths = [
+            '/usr/local/bin/docker',  # Homebrew installation
+            '/opt/homebrew/bin/docker',  # Apple Silicon Homebrew
+            '/usr/bin/docker',  # System installation
+        ]
+        
+        # First check if docker is in PATH
+        if os.environ.get('PATH'):
+            for path in os.environ['PATH'].split(os.pathsep):
+                docker_path = os.path.join(path, 'docker')
+                if os.path.isfile(docker_path) and os.access(docker_path, os.X_OK):
+                    return docker_path
+        
+        # Then check common locations
+        for path in docker_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                return path
+        
+        return 'docker'  # Fallback to just 'docker' if not found
 
 def setup_environment():
     """Setup the environment with necessary paths"""

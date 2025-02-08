@@ -11,7 +11,6 @@ import psutil
 from pathlib import Path
 from docker_handler import stop_container, get_resource_path
 from api import create_app
-from webview.util import escape_string
 
 class Api:
     def __init__(self, app):
@@ -199,10 +198,12 @@ class TakManagerApp:
                     factory=True
                 )
             else:
+                # In production mode, run directly without subprocess
                 uvicorn.run(
                     app,
                     host="127.0.0.1",
-                    port=self.api_port
+                    port=self.api_port,
+                    log_level="error"  # Reduce logging in production
                 )
         except Exception as e:
             print(f"Server failed to start: {e}")
@@ -245,19 +246,21 @@ class TakManagerApp:
                 print("Servers are ready!")
 
             else:
-                # Build frontend for production
+                # Production mode
                 dist_dir = self.web_dir / "dist"
                 if not dist_dir.exists():
                     print("Building frontend...")
                     npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
                     subprocess.run([npm_cmd, 'run', 'build'], cwd=str(self.web_dir), check=True)
                 
-                # Start FastAPI production server
-                api_process = subprocess.Popen(
-                    [sys.executable, str(Path(__file__)), '--port', str(self.api_port)],
-                    start_new_session=True
+                # In production mode, start the API server in a thread instead of a subprocess
+                import threading
+                api_thread = threading.Thread(
+                    target=self.start_api_server,
+                    name="api_server",
+                    daemon=True
                 )
-                self.processes.append(api_process)
+                api_thread.start()
 
                 # Wait for backend server to be ready
                 backend_url = f"http://localhost:{self.api_port}/health"
@@ -298,19 +301,12 @@ def main():
     import argparse
     import sys
     
-    # Filter out the PyInstaller runtime path argument
-    filtered_args = [arg for arg in sys.argv if not arg.endswith('Frameworks/app.py')]
+    # Check if we're running as a packaged executable
+    is_packaged = getattr(sys, 'frozen', False)
     
-    parser = argparse.ArgumentParser(description='TAK Manager')
-    parser.add_argument('--dev', action='store_true', help='Run in development mode')
-    parser.add_argument('--port', type=int, default=8000, help='API port (default: 8000)')
-    
-    # Use the filtered arguments for parsing
-    args = parser.parse_args(filtered_args[1:])  # Skip the first argument (script name)
-
-    # If no additional arguments are provided or only --dev, run the full application
-    if len(filtered_args) == 1 or (len(filtered_args) == 2 and filtered_args[1] == '--dev'):
-        app = TakManagerApp(dev_mode=args.dev, api_port=args.port)
+    if is_packaged:
+        # When packaged, always run in production mode with default port
+        app = TakManagerApp(dev_mode=False, api_port=8000)
         try:
             app.run()
         except KeyboardInterrupt:
@@ -321,9 +317,30 @@ def main():
             app.full_cleanup()
             sys.exit(0)
     else:
-        # If arguments are provided, assume we're starting just the API server
+        # Development mode - handle arguments
+        parser = argparse.ArgumentParser(description='TAK Manager')
+        parser.add_argument('--dev', action='store_true', help='Run in development mode')
+        parser.add_argument('--port', type=int, default=8000, help='API port (default: 8000)')
+        
+        # Filter out any PyInstaller-related arguments
+        filtered_args = [arg for arg in sys.argv[1:] if not any(x in arg for x in ['_internal', 'Frameworks'])]
+        args = parser.parse_args(filtered_args)
+
+        # If no additional arguments are provided or only --dev, run the full application
         app = TakManagerApp(dev_mode=args.dev, api_port=args.port)
-        app.start_api_server()
+        if not filtered_args or (len(filtered_args) == 1 and filtered_args[0] == '--dev'):
+            try:
+                app.run()
+            except KeyboardInterrupt:
+                print("\nReceived keyboard interrupt...")
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+            finally:
+                app.full_cleanup()
+                sys.exit(0)
+        else:
+            # If arguments are provided, assume we're starting just the API server
+            app.start_api_server()
 
 if __name__ == '__main__':
     main() 
