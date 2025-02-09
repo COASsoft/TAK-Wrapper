@@ -85,20 +85,47 @@ def select_directory():
     
     return ""
 
-def load_config() -> dict:
-    """Load configuration from .env file located in the same directory as this script"""
-    try:
-        env_path = Path(__file__).parent / '.env'  # The .env file is loaded from the current script's directory
-        if not env_path.exists():
-            return {"TAK_SERVER_INSTALL_DIR": "", "BACKEND_PORT": ""}
+def get_app_config_dir() -> Path:
+    """Get the appropriate config directory for the current OS"""
+    system = platform.system().lower()
+    
+    if system == "darwin":  # macOS
+        return Path.home() / "Library" / "Application Support" / "TAK-Manager"
+    elif system == "windows":  # Windows
+        return Path(os.getenv('APPDATA', str(Path.home() / 'AppData' / 'Roaming'))) / "TAK-Manager"
+    else:  # Linux
+        return Path.home() / ".config" / "tak-manager"
 
-        config = {}
-        with open(env_path, 'r') as f:
-            for line in f:
-                if line.strip() and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    if key in ['TAK_SERVER_INSTALL_DIR', 'BACKEND_PORT']:
-                        config[key] = value
+def load_config() -> dict:
+    """Load configuration from .env files
+    
+    Checks in the following order:
+    1. Packaged .env file in the same directory as this script
+    2. Local system .env file in the OS-specific app config directory
+    """
+    config = {"TAK_SERVER_INSTALL_DIR": "", "BACKEND_PORT": ""}
+    
+    try:
+        # First check packaged env file
+        packaged_env_path = Path(__file__).parent / '.env'
+        if packaged_env_path.exists():
+            with open(packaged_env_path, 'r') as f:
+                for line in f:
+                    if line.strip() and not line.startswith('#'):
+                        key, value = line.strip().split('=', 1)
+                        if key in ['TAK_SERVER_INSTALL_DIR', 'BACKEND_PORT']:
+                            config[key] = value
+        
+        # If packaged env is empty, check local system env file
+        if not any(config.values()):
+            local_env_path = get_app_config_dir() / '.env'
+            if local_env_path.exists():
+                with open(local_env_path, 'r') as f:
+                    for line in f:
+                        if line.strip() and not line.startswith('#'):
+                            key, value = line.strip().split('=', 1)
+                            if key in ['TAK_SERVER_INSTALL_DIR', 'BACKEND_PORT']:
+                                config[key] = value
 
         return config
     except Exception as e:
@@ -106,29 +133,62 @@ def load_config() -> dict:
         return {"TAK_SERVER_INSTALL_DIR": "", "BACKEND_PORT": ""}
 
 def save_config(install_dir: str, port: str) -> bool:
-    """Update the .env file located in the same directory as this script with new configuration"""
+    """Update both the packaged and local system .env files with new configuration"""
     try:
-        env_path = Path(__file__).parent / '.env'  # The .env file is saved in the current script's directory
-        if not env_path.exists():
-            return False
+        # Save to packaged env file
+        packaged_env_path = Path(__file__).parent / '.env'
+        if packaged_env_path.exists():
+            with open(packaged_env_path, 'r') as f:
+                lines = f.readlines()
 
-        # Read existing .env file
-        with open(env_path, 'r') as f:
-            lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                if line.startswith('BACKEND_PORT='):
+                    new_lines.append(f'BACKEND_PORT={port}\n')
+                elif line.startswith('TAK_SERVER_INSTALL_DIR='):
+                    new_lines.append(f'TAK_SERVER_INSTALL_DIR={install_dir}\n')
+                else:
+                    new_lines.append(line)
 
-        # Update only the BACKEND_PORT and TAK_SERVER_INSTALL_DIR lines
-        new_lines = []
-        for line in lines:
-            if line.startswith('BACKEND_PORT='):
+            with open(packaged_env_path, 'w') as f:
+                f.writelines(new_lines)
+
+        # Save to local system env file
+        config_dir = get_app_config_dir()
+        config_dir.mkdir(parents=True, exist_ok=True)
+        local_env_path = config_dir / '.env'
+        
+        # Create or update local env file
+        if not local_env_path.exists():
+            env_content = f"""BACKEND_PORT={port}
+TAK_SERVER_INSTALL_DIR={install_dir}
+"""
+            with open(local_env_path, 'w') as f:
+                f.write(env_content)
+        else:
+            with open(local_env_path, 'r') as f:
+                lines = f.readlines()
+
+            new_lines = []
+            found_port = False
+            found_install_dir = False
+            for line in lines:
+                if line.startswith('BACKEND_PORT='):
+                    new_lines.append(f'BACKEND_PORT={port}\n')
+                    found_port = True
+                elif line.startswith('TAK_SERVER_INSTALL_DIR='):
+                    new_lines.append(f'TAK_SERVER_INSTALL_DIR={install_dir}\n')
+                    found_install_dir = True
+                else:
+                    new_lines.append(line)
+            
+            if not found_port:
                 new_lines.append(f'BACKEND_PORT={port}\n')
-            elif line.startswith('TAK_SERVER_INSTALL_DIR='):
+            if not found_install_dir:
                 new_lines.append(f'TAK_SERVER_INSTALL_DIR={install_dir}\n')
-            else:
-                new_lines.append(line)
 
-        # Write back to .env file
-        with open(env_path, 'w') as f:
-            f.writelines(new_lines)
+            with open(local_env_path, 'w') as f:
+                f.writelines(new_lines)
 
         # Update environment variables
         os.environ['BACKEND_PORT'] = port
