@@ -2,11 +2,13 @@
 import sys
 from pathlib import Path
 import glob
+import os
 
 block_cipher = None
 
-# Get the root directory
+# Get the root directory and version from environment
 root_dir = Path('.')
+version = os.environ.get('VERSION') 
 
 # Define platform-specific settings
 if sys.platform == 'darwin':  # macOS
@@ -102,8 +104,8 @@ if sys.platform == 'darwin':
         icon=icon if icon.exists() else None,
         bundle_identifier=bundle_id,
         info_plist={
-            'CFBundleShortVersionString': '1.0.0',
-            'CFBundleVersion': '1.0.0',
+            'CFBundleShortVersionString': version,
+            'CFBundleVersion': version,
             'LSMinimumSystemVersion': '10.13.0',
             'NSHighResolutionCapable': True,
             'NSRequiresAquaSystemAppearance': False,
