@@ -11,6 +11,7 @@ import psutil
 from pathlib import Path
 from docker_handler import stop_container, get_resource_path
 from api import create_app
+import threading
 
 # Add Windows-specific imports at the top
 if sys.platform == 'win32':
@@ -31,16 +32,12 @@ def hide_console():
 class Api:
     def __init__(self, app):
         self.window = None
-        self.app = app  # Store reference to main app for cleanup
-        self.is_tak_manager = False  # Flag to identify TAK Manager window
+        self.app = app
+        self.is_tak_manager = False
 
     def navigate(self, url):
         """Open TAK Manager in a new window"""
-        print(f"Opening new window for: {url}")
-        
-        # Wait for service to be ready
-        print("Waiting for service to be ready...")
-        for _ in range(10):  # Try for 10 seconds
+        for _ in range(10):
             try:
                 response = requests.get(url)
                 if response.status_code == 200:
@@ -49,31 +46,23 @@ class Api:
                 pass
             time.sleep(1)
         
-        # Store old window reference
         old_window = self.window
-        
-        # Create new window with close event handler
         self.window = webview.create_window(
             'TAK Manager',
             url,
             width=1200,
             height=800,
-            js_api=self
+            js_api=self,
+            text_select=True
         )
         
-        # Mark this as TAK Manager window
         self.is_tak_manager = True
-        
-        # Add close event handler for TAK Manager window
         self.window.events.closed += self.app.full_cleanup
         
-        # Destroy old window after small delay to ensure new window is ready
         if old_window:
             def destroy_old():
-                time.sleep(0.5)  # Small delay
+                time.sleep(0.5)
                 old_window.destroy()
-            
-            import threading
             threading.Thread(target=destroy_old).start()
 
 class TakManagerApp:
@@ -127,25 +116,19 @@ class TakManagerApp:
             return
         self._is_cleaning_up = True
         
-        print("Cleaning up setup resources...")
-        
-        # Only close the setup window
         if self.window and not self.js_api.is_tak_manager:
             try:
                 self.window.destroy()
-                print("Setup window closed")
-            except Exception as e:
-                print(f"Error closing setup window: {e}")
+            except Exception:
+                pass
 
-        # Only kill setup-specific processes (dev server if in dev mode)
         if self.dev_mode:
             for process in self.processes:
                 if "vite" in str(process.args):
                     try:
                         self.kill_process_tree(process.pid)
-                        print(f"Dev server process tree {process.pid} terminated")
-                    except Exception as e:
-                        print(f"Error terminating dev server process tree {process.pid}: {e}")
+                    except Exception:
+                        pass
 
         self._is_cleaning_up = False
 
@@ -155,35 +138,26 @@ class TakManagerApp:
             return
         self._is_cleaning_up = True
         
-        print("Cleaning up all resources...")
-        
-        # Stop any running containers first
         try:
             stop_container(self.compose_file)
-            print("Docker containers stopped")
-        except Exception as e:
-            print(f"Error stopping Docker containers: {e}")
+        except Exception:
+            pass
 
-        # Close all webview windows
         try:
             for window in webview.windows:
                 try:
                     window.destroy()
                 except:
                     pass
-            print("All webview windows closed")
-        except Exception as e:
-            print(f"Error closing windows: {e}")
+        except Exception:
+            pass
 
-        # Kill all child processes and their descendants
         for process in self.processes:
             try:
                 self.kill_process_tree(process.pid)
-                print(f"Process tree {process.pid} terminated")
-            except Exception as e:
-                print(f"Error terminating process tree {process.pid}: {e}")
+            except Exception:
+                pass
 
-        # Force exit to ensure all resources are cleaned up
         os._exit(0)
 
     def wait_for_server(self, url: str, timeout: int = 30) -> bool:
@@ -197,7 +171,6 @@ class TakManagerApp:
             except requests.RequestException:
                 pass
             time.sleep(1)
-            print(f"Waiting for {url} to be ready...")
         return False
 
     def start_api_server(self):
@@ -214,23 +187,19 @@ class TakManagerApp:
                     factory=True
                 )
             else:
-                # In production mode, run directly without subprocess
                 uvicorn.run(
                     app,
                     host="127.0.0.1",
                     port=self.api_port,
-                    log_level="error"  # Reduce logging in production
+                    log_level="error"
                 )
-        except Exception as e:
-            print(f"Server failed to start: {e}")
+        except Exception:
             raise
 
     def run(self):
         """Run the application"""
         try:
-            # Start the appropriate servers based on mode
             if self.dev_mode:
-                # Start Vite dev server
                 try:
                     npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
                     vite_process = subprocess.Popen(
@@ -240,36 +209,28 @@ class TakManagerApp:
                     )
                     self.processes.append(vite_process)
                 except subprocess.CalledProcessError:
-                    print("Failed to start Vite dev server")
                     sys.exit(1)
 
-                # Start FastAPI development server
                 api_process = subprocess.Popen(
                     [sys.executable, str(Path(__file__)), '--dev', '--port', str(self.api_port)],
                     start_new_session=True
                 )
                 self.processes.append(api_process)
 
-                # Wait for both servers to be ready
                 frontend_url = "http://localhost:3000"
                 backend_url = f"http://localhost:{self.api_port}/health"
                 
-                print("Waiting for servers to start...")
                 if not self.wait_for_server(frontend_url):
                     raise Exception("Frontend server failed to start")
                 if not self.wait_for_server(backend_url):
                     raise Exception("Backend server failed to start")
-                print("Servers are ready!")
 
             else:
-                # Production mode
                 dist_dir = self.web_dir / "dist"
                 if not dist_dir.exists():
-                    print("Building frontend...")
                     npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
                     subprocess.run([npm_cmd, 'run', 'build'], cwd=str(self.web_dir), check=True)
                 
-                # In production mode, start the API server in a thread instead of a subprocess
                 import threading
                 api_thread = threading.Thread(
                     target=self.start_api_server,
@@ -278,34 +239,25 @@ class TakManagerApp:
                 )
                 api_thread.start()
 
-                # Wait for backend server to be ready
                 backend_url = f"http://localhost:{self.api_port}/health"
-                print("Waiting for server to start...")
                 if not self.wait_for_server(backend_url):
                     raise Exception("Backend server failed to start")
-                print("Server is ready!")
 
-            # Create initial configuration window
             frontend_url = "http://localhost:3000" if self.dev_mode else f"http://localhost:{self.api_port}"
             self.window = webview.create_window(
                 'TAK Manager Setup',
                 url=frontend_url,
                 width=1200,
                 height=800,
-                js_api=self.js_api
+                js_api=self.js_api,
+                text_select=True
             )
-            
-            # Add close event handler for setup window
-            self.window.events.closed += self.cleanup_setup
-            
-            # Update the API's window reference
-            self.js_api.window = self.window
 
-            # Start the webview
-            webview.start(debug=True)
+            self.window.events.closed += self.cleanup_setup
+            self.js_api.window = self.window
+            webview.start()
 
         except Exception as e:
-            print(f"Error running application: {e}")
             self.full_cleanup()
             sys.exit(1)
 
