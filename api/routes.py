@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import webbrowser
-import os
 from path_handler import select_directory, save_config as save_config_file, load_config
 from docker_handler import (
     check_docker_installed,
@@ -10,7 +9,7 @@ from docker_handler import (
     start_container,
     stop_container
 )
-import webview
+from port_checker import check_port_availability
 
 router = APIRouter()
 compose_file = "docker-compose.prod.yml"
@@ -88,4 +87,10 @@ async def select_directory_route():
         path = select_directory()
         return {"path": path}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/check-port/{port}")
+async def check_port(port: int):
+    """Check if a port is available for use."""
+    is_available, message = check_port_availability(port)
+    return {"available": is_available, "message": message} 

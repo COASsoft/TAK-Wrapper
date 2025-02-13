@@ -100,4 +100,13 @@ export const api = {
     }
     return response.json();
   },
+
+  checkPortAvailability: async (port: number): Promise<{ available: boolean, message: string }> => {
+    const response = await fetch(`${API_BASE}/check-port/${port}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to check port availability');
+    }
+    return response.json();
+  },
 }; 

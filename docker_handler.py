@@ -205,7 +205,7 @@ def start_container(compose_file: str) -> dict:
         
         # First ensure the Docker image is loaded
         if not find_and_load_docker_image():
-            return {"success": False, "error": "Failed to load Docker image"}
+            return {"success": False, "error": "Failed to load Docker image. Ensure Docker is installed and running."}
 
         # Get the correct compose file path using get_resource_path
         compose_file = get_resource_path(compose_file)

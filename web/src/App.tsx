@@ -1,44 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ConfigScreen } from './components/ConfigScreen';
-import { Button } from './ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
-import { Alert, AlertTitle, AlertDescription } from './ui/alert';
-import { Loader2 } from 'lucide-react';
+import { LoadingState } from './components/LoadingState';
+import { ErrorState } from './components/ErrorState';
+import { DockerInstallPrompt } from './components/DockerInstallPrompt';
+import { BackgroundWrapper } from './components/BackgroundWrapper';
 import { api } from './lib/api';
-
-declare global {
-  interface Window {
-    pywebview: {
-      api: {
-        check_docker_installed: () => Promise<boolean>;
-        check_docker_running: () => Promise<boolean>;
-        get_docker_install_url: () => Promise<string>;
-        save_config: (installDir: string, port: string) => Promise<{ success: boolean, error?: string }>;
-        start_container: () => Promise<{ success: boolean, error?: string }>;
-        stop_container: () => Promise<{ success: boolean, error?: string }>;
-        get_config: () => Promise<{ TAK_SERVER_INSTALL_DIR: string, BACKEND_PORT: string }>;
-        select_directory: () => Promise<{ path: string }>;
-        open_external_url: (url: string) => Promise<{ success: boolean }>;
-        navigate: (url: string) => void;
-      };
-    };
-  }
-}
-
-const BackgroundWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="relative min-h-screen bg-svg-background overflow-hidden">
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-      <img 
-        src="/tak.svg" 
-        alt="" 
-        className="w-full h-full max-w-[90vh] max-h-[90vh] object-contain opacity-50 blur-[2px]"
-      />
-    </div>
-    <div className="relative z-10 min-h-screen">
-      {children}
-    </div>
-  </div>
-);
+import type {} from './types/global';
 
 export const App: React.FC = () => {
   const [isDockerInstalled, setIsDockerInstalled] = useState<boolean | null>(null);
@@ -78,7 +45,6 @@ export const App: React.FC = () => {
 
         if (running) {
           setStatusMessage('Checking configuration...');
-          // Check if we have config and start container if we do
           const config = await api.getConfig();
           if (config.TAK_SERVER_INSTALL_DIR && config.BACKEND_PORT) {
             setIsInitialLoad(false);
@@ -86,7 +52,7 @@ export const App: React.FC = () => {
             setStatusMessage('Starting TAK Manager container...');
             const result = await api.startContainer();
             if (!result.success) {
-              setError(result.error || 'Failed to start container');
+              setError(result.error ?? 'Unknown error occurred while starting container');
             } else if (result.port) {
               setStatusMessage('Opening TAK Manager...');
               console.log('Opening TAK Manager on port:', result.port);
@@ -98,7 +64,11 @@ export const App: React.FC = () => {
         }
       }
     } catch (error) {
-      setError('Failed to check Docker status');
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred while checking Docker status');
+      }
       console.error('Failed to check Docker:', error);
     } finally {
       setIsLoading(false);
@@ -123,10 +93,17 @@ export const App: React.FC = () => {
     if (!isApiReady) return;
     
     try {
-      await api.openExternalUrl('https://www.docker.com/products/docker-desktop/');
+      const result = await api.openExternalUrl('https://www.docker.com/products/docker-desktop/');
+      if (!result.success) {
+        setError('Failed to open Docker installation page');
+      }
     } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to open Docker installation page');
+      }
       console.error('Failed to open Docker installation page:', error);
-      setError('Failed to open Docker installation page');
     }
   };
 
@@ -143,17 +120,21 @@ export const App: React.FC = () => {
         setStatusMessage('Starting TAK Manager container...');
         const containerResult = await api.startContainer();
         if (!containerResult.success) {
-          setError(containerResult.error || 'Failed to start container');
+          setError(containerResult.error ?? 'Unknown error occurred while starting container');
         } else if (containerResult.port) {
           setStatusMessage('Opening TAK Manager...');
           console.log('Opening TAK Manager on port:', containerResult.port);
           window.pywebview.api.navigate(`http://localhost:${containerResult.port}`);
         }
       } else {
-        setError(result.error || 'Failed to save configuration');
+        setError(result.error ?? 'Unknown error occurred while saving configuration');
       }
     } catch (error) {
-      setError('Failed to save configuration');
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred while saving configuration');
+      }
       console.error('Failed to save configuration:', error);
     } finally {
       setIsLoading(false);
@@ -161,108 +142,20 @@ export const App: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <BackgroundWrapper>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">{statusMessage}</p>
-          </div>
-        </div>
-      </BackgroundWrapper>
-    );
-  }
-
-  if (isContainerStarting) {
-    return (
-      <BackgroundWrapper>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">{statusMessage}</p>
-          </div>
-        </div>
-      </BackgroundWrapper>
-    );
+  if (isLoading || isContainerStarting) {
+    return <LoadingState statusMessage={statusMessage} />;
   }
 
   if (error) {
-    return (
-      <BackgroundWrapper>
-        <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-destructive">Error</CardTitle>
-              <CardDescription>{error}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={checkDocker}
-                className="w-full"
-                variant="default"
-              >
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </BackgroundWrapper>
-    );
+    return <ErrorState error={error} onRetry={checkDocker} />;
   }
 
   if (isDockerInstalled === false) {
-    return (
-      <BackgroundWrapper>
-        <div className="container mx-auto px-4 flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Docker Not Installed</CardTitle>
-              <CardDescription>
-                Docker is required to run TAK Manager
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <AlertTitle>Installation Required</AlertTitle>
-                <AlertDescription>
-                  Please install Docker Desktop to continue using TAK Manager.
-                </AlertDescription>
-              </Alert>
-              <div className="flex flex-col space-y-2">
-                <Button 
-                  onClick={handleInstallDocker}
-                  className="w-full"
-                  variant="default"
-                >
-                  Install Docker
-                </Button>
-                <Button 
-                  onClick={checkDocker}
-                  className="w-full"
-                  variant="outline"
-                >
-                  Check Again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </BackgroundWrapper>
-    );
+    return <DockerInstallPrompt onInstall={handleInstallDocker} onCheckAgain={checkDocker} />;
   }
 
   if (isDockerRunning === false) {
-    return (
-      <BackgroundWrapper>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">{statusMessage}</p>
-          </div>
-        </div>
-      </BackgroundWrapper>
-    );
+    return <LoadingState statusMessage={statusMessage} />;
   }
 
   return isInitialLoad ? (
@@ -270,13 +163,6 @@ export const App: React.FC = () => {
       <ConfigScreen onSaveConfig={handleSaveConfig} />
     </BackgroundWrapper>
   ) : (
-    <BackgroundWrapper>
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">{statusMessage}</p>
-        </div>
-      </div>
-    </BackgroundWrapper>
+    <LoadingState statusMessage={statusMessage} />
   );
 }; 
