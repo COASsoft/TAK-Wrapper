@@ -36,6 +36,7 @@ datas = [
     ('web/dist', 'web/dist'),  # Built web frontend
     ('.env', '.'),  # Environment template
     ('docker-compose.prod.yml', '.'),  # Docker compose file
+    ('version.txt', '.'),  # Version file
 ]
 
 # Add platform-specific resources

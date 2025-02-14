@@ -109,4 +109,38 @@ export const api = {
     }
     return response.json();
   },
+
+  async checkForUpdate(): Promise<{ 
+    hasUpdate: boolean; 
+    currentVersion: string; 
+    latestVersion: string;
+    releaseNotes: string;
+    error?: string; 
+  }> {
+    const response = await fetch(`${API_BASE}/check-update`);
+    if (!response.ok) {
+      throw new Error('Failed to check for updates');
+    }
+    const data = await response.json();
+    return {
+      hasUpdate: data.has_update,
+      currentVersion: data.current_version,
+      latestVersion: data.latest_version,
+      releaseNotes: data.release_notes,
+      error: data.error
+    };
+  },
+
+  async checkNetwork(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE}/check-network`);
+      if (!response.ok) {
+        return false;
+      }
+      const data = await response.json();
+      return data.connected;
+    } catch {
+      return false;
+    }
+  },
 }; 

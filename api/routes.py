@@ -10,6 +10,14 @@ from docker_handler import (
     stop_container
 )
 from port_checker import check_port_availability
+import requests
+from packaging import version
+import os
+import json
+import socket
+import subprocess
+import platform
+from pathlib import Path
 
 router = APIRouter()
 compose_file = "docker-compose.prod.yml"
@@ -93,4 +101,110 @@ async def select_directory_route():
 async def check_port(port: int):
     """Check if a port is available for use."""
     is_available, message = check_port_availability(port)
-    return {"available": is_available, "message": message} 
+    return {"available": is_available, "message": message}
+
+def get_current_version():
+    """Get current version from version.txt"""
+    try:
+        version_file = Path(__file__).parent.parent / 'version.txt'
+        if version_file.exists():
+            version = version_file.read_text().strip()
+            if version.startswith('v'):
+                version = version[1:]
+            return version
+    except Exception as e:
+        print(f"Error reading version file: {e}")
+    return '1.0.0'  # Fallback version
+
+@router.get("/check-update")
+async def check_update():
+    """Check for updates from Gitea repository"""
+    try:
+        # Get current version from version.txt
+        current_version = get_current_version()
+
+        try:
+            # Fetch latest release from Gitea API
+            response = requests.get(
+                'https://gitea.ubuntuserver.buzz/api/v1/repos/Jake/Tak-Manager/releases/latest',
+                timeout=10
+            )
+            response.raise_for_status()
+            
+            latest_release = response.json()
+            latest_version = latest_release.get('tag_name', '')
+            release_notes = latest_release.get('body', 'No release notes available.')
+            
+            if not latest_version:
+                return {
+                    "has_update": False,
+                    "error": "No version information found in latest release",
+                    "current_version": current_version,
+                    "latest_version": current_version,
+                    "release_notes": ""
+                }
+
+            if latest_version.startswith('v'):
+                latest_version = latest_version[1:]
+            
+            # Compare versions
+            has_update = version.parse(latest_version) > version.parse(current_version)
+            
+            return {
+                "has_update": has_update,
+                "current_version": current_version,
+                "latest_version": latest_version,
+                "release_notes": release_notes
+            }
+        except requests.RequestException as e:
+            # Handle network-related errors specifically
+            return {
+                "has_update": False,
+                "error": f"Network error checking for updates: {str(e)}",
+                "current_version": current_version,
+                "latest_version": current_version,
+                "release_notes": ""
+            }
+        except json.JSONDecodeError:
+            # Handle invalid JSON response
+            return {
+                "has_update": False,
+                "error": "Invalid response from update server",
+                "current_version": current_version,
+                "latest_version": current_version,
+                "release_notes": ""
+            }
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {
+            "has_update": False,
+            "error": f"Error checking for updates: {str(e)}",
+            "current_version": "1.0.0",
+            "latest_version": "1.0.0",
+            "release_notes": ""
+        }
+
+def check_network_connectivity():
+    """Check if we can reach the Gitea server"""
+    host = "gitea.ubuntuserver.buzz"
+    try:
+        # Try DNS resolution first
+        socket.gethostbyname(host)
+        
+        # Use platform-specific ping command
+        system = platform.system().lower()
+        if system == "windows":
+            ping_cmd = ["ping", "-n", "1", "-w", "1000", host]
+        else:  # macOS or Linux
+            ping_cmd = ["ping", "-c", "1", "-W", "1", host]
+            
+        result = subprocess.run(ping_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return result.returncode == 0
+    except:
+        return False
+
+@router.get("/check-network")
+async def check_network():
+    """Check if network connection to update server is available"""
+    is_connected = check_network_connectivity()
+    return {"connected": is_connected} 

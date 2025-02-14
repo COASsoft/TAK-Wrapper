@@ -3,6 +3,7 @@ import { ConfigScreen } from './components/ConfigScreen';
 import { LoadingState } from './components/LoadingState';
 import { ErrorState } from './components/ErrorState';
 import { DockerInstallPrompt } from './components/DockerInstallPrompt';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { BackgroundWrapper } from './components/BackgroundWrapper';
 import { api } from './lib/api';
 import type {} from './types/global';
@@ -16,6 +17,23 @@ export const App: React.FC = () => {
   const [isApiReady, setIsApiReady] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string>('Initializing...');
+  const [updateInfo, setUpdateInfo] = useState<{
+    hasUpdate: boolean;
+    currentVersion: string;
+    latestVersion: string;
+    releaseNotes: string;
+    checkComplete: boolean;
+  } | null>({ 
+    hasUpdate: false, 
+    currentVersion: '', 
+    latestVersion: '', 
+    releaseNotes: '',
+    checkComplete: false 
+  });
+
+  // Add retry count state
+  const [updateCheckRetries, setUpdateCheckRetries] = useState(0);
+  const MAX_RETRIES = 3;
 
   // Wait for pywebview API to be ready
   useEffect(() => {
@@ -29,8 +47,84 @@ export const App: React.FC = () => {
     checkApi();
   }, []);
 
+  const checkForUpdates = async () => {
+    try {
+      // Check network connectivity first
+      setStatusMessage('Checking network connectivity...');
+      const isConnected = await api.checkNetwork();
+      
+      if (!isConnected) {
+        console.log('No network connectivity, skipping update check');
+        setUpdateInfo({
+          hasUpdate: false,
+          currentVersion: 'Unknown',
+          latestVersion: 'Unknown',
+          releaseNotes: '',
+          checkComplete: true
+        });
+        return;
+      }
+
+      setStatusMessage(`Checking for updates${updateCheckRetries > 0 ? ` (Attempt ${updateCheckRetries + 1}/${MAX_RETRIES})` : ''}...`);
+      const updateData = await api.checkForUpdate();
+      
+      if (!updateData.error) {
+        setUpdateInfo({
+          hasUpdate: updateData.hasUpdate,
+          currentVersion: updateData.currentVersion,
+          latestVersion: updateData.latestVersion,
+          releaseNotes: updateData.releaseNotes,
+          checkComplete: true
+        });
+      } else {
+        throw new Error(updateData.error);
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      
+      if (updateCheckRetries < MAX_RETRIES - 1) {
+        // Only retry if we have network connectivity
+        const isConnected = await api.checkNetwork();
+        if (isConnected) {
+          // Increment retry count and try again after a delay
+          setUpdateCheckRetries(prev => prev + 1);
+          setTimeout(checkForUpdates, 2000); // Wait 2 seconds before retrying
+        } else {
+          // No network connectivity, skip update check
+          console.log('No network connectivity, skipping update check');
+          setUpdateInfo({
+            hasUpdate: false,
+            currentVersion: 'Unknown',
+            latestVersion: 'Unknown',
+            releaseNotes: '',
+            checkComplete: true
+          });
+        }
+      } else {
+        // Max retries reached, continue with application
+        console.log('Max retries reached for update check, continuing with application');
+        setUpdateInfo(prev => prev ? {
+          ...prev,
+          hasUpdate: false,
+          checkComplete: true,
+        } : null);
+      }
+    }
+  };
+
+  const handleUpdate = () => {
+    // Open the release page in the default browser
+    if (window.pywebview && window.pywebview.api) {
+      api.openExternalUrl('https://gitea.ubuntuserver.buzz/Jake/Tak-Manager/releases/latest');
+    }
+  };
+
+  const handleSkipUpdate = () => {
+    setUpdateInfo(prev => prev ? { ...prev, hasUpdate: false } : null);
+  };
+
   const checkDocker = async () => {
-    if (!isApiReady) return;
+    if (!isApiReady || !updateInfo?.checkComplete) return;
     
     try {
       setError(null);
@@ -76,11 +170,20 @@ export const App: React.FC = () => {
     }
   };
 
+  // First effect: Check for updates when API is ready
   useEffect(() => {
     if (isApiReady) {
-      checkDocker();
+      setUpdateCheckRetries(0); // Reset retry count
+      checkForUpdates();
     }
   }, [isApiReady]);
+
+  // Second effect: Only proceed with Docker check after update check is complete
+  useEffect(() => {
+    if (updateInfo?.checkComplete && !updateInfo.hasUpdate) {
+      checkDocker();
+    }
+  }, [isApiReady, updateInfo?.checkComplete, updateInfo?.hasUpdate]);
 
   useEffect(() => {
     return () => {
@@ -142,12 +245,25 @@ export const App: React.FC = () => {
     }
   };
 
-  if (isLoading || isContainerStarting) {
+  // Show loading state while checking for updates
+  if (!updateInfo?.checkComplete) {
     return <LoadingState statusMessage={statusMessage} />;
   }
 
   if (error) {
     return <ErrorState error={error} onRetry={checkDocker} />;
+  }
+
+  if (updateInfo?.hasUpdate) {
+    return (
+      <UpdatePrompt
+        currentVersion={updateInfo.currentVersion}
+        latestVersion={updateInfo.latestVersion}
+        releaseNotes={updateInfo.releaseNotes}
+        onUpdate={handleUpdate}
+        onSkip={handleSkipUpdate}
+      />
+    );
   }
 
   if (isDockerInstalled === false) {
