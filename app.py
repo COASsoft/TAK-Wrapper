@@ -255,7 +255,11 @@ class TakManagerApp:
 
             self.window.events.closed += self.cleanup_setup
             self.js_api.window = self.window
-            webview.start()
+            webview.start(
+                http_server=True,
+                http_port=13377,
+                private_mode=False
+            )
 
         except Exception as e:
             self.full_cleanup()
