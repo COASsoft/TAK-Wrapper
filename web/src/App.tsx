@@ -254,7 +254,7 @@ export const App: React.FC = () => {
     return <ErrorState error={error} onRetry={checkDocker} />;
   }
 
-  if (updateInfo?.hasUpdate) {
+  if (updateInfo?.hasUpdate && updateInfo?.checkComplete) {
     return (
       <UpdatePrompt
         currentVersion={updateInfo.currentVersion}
@@ -266,14 +266,25 @@ export const App: React.FC = () => {
     );
   }
 
+  // Show loading state while checking Docker installation
+  if (isDockerInstalled === null) {
+    return <LoadingState statusMessage={statusMessage} />;
+  }
+
   if (isDockerInstalled === false) {
     return <DockerInstallPrompt onInstall={handleInstallDocker} onCheckAgain={checkDocker} />;
+  }
+
+  // Show loading state while checking if Docker is running
+  if (isDockerRunning === null) {
+    return <LoadingState statusMessage={statusMessage} />;
   }
 
   if (isDockerRunning === false) {
     return <LoadingState statusMessage={statusMessage} />;
   }
 
+  // Only show ConfigScreen when all previous checks are complete and it's initial load
   return isInitialLoad ? (
     <BackgroundWrapper>
       <ConfigScreen onSaveConfig={handleSaveConfig} />
