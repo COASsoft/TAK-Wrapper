@@ -54,4 +54,4 @@ logs/
 #venv
 venv/
 tak-manager-venv/
-
+.venv/
