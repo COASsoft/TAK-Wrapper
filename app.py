@@ -50,8 +50,8 @@ class Api:
         self.window = webview.create_window(
             'TAK Manager',
             url,
-            width=1200,
-            height=800,
+            width=1300,
+            height=850,
             js_api=self,
             text_select=True
         )
@@ -247,8 +247,8 @@ class TakManagerApp:
             self.window = webview.create_window(
                 'TAK Manager Setup',
                 url=frontend_url,
-                width=1200,
-                height=800,
+                width=1300,
+                height=850,
                 js_api=self.js_api,
                 text_select=True
             )
