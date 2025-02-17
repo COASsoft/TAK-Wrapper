@@ -47,15 +47,19 @@ class Api:
             time.sleep(1)
         
         old_window = self.window
-        self.window = webview.create_window(
-            'TAK Manager',
-            url,
-            width=1300,
-            height=850,
-            js_api=self,
-            text_select=True
-        )
-        
+        try:
+            self.window = webview.create_window(
+                'TAK Manager',
+                url,
+                width=1300,
+                height=850,
+                js_api=self,
+                text_select=True
+            )
+        except Exception as e:
+            if 'NoneType' not in str(e):  # Only re-raise if it's not the DOM iteration error
+                raise
+            
         self.is_tak_manager = True
         self.window.events.closed += self.app.full_cleanup
         
@@ -244,14 +248,18 @@ class TakManagerApp:
                     raise Exception("Backend server failed to start")
 
             frontend_url = "http://localhost:3000" if self.dev_mode else f"http://localhost:{self.api_port}"
-            self.window = webview.create_window(
-                'TAK Manager Setup',
-                url=frontend_url,
-                width=1300,
-                height=850,
-                js_api=self.js_api,
-                text_select=True
-            )
+            try:
+                self.window = webview.create_window(
+                    'TAK Manager Setup',
+                    url=frontend_url,
+                    width=1300,
+                    height=850,
+                    js_api=self.js_api,
+                    text_select=True
+                )
+            except Exception as e:
+                if 'NoneType' not in str(e):  # Only re-raise if it's not the DOM iteration error
+                    raise
 
             self.window.events.closed += self.cleanup_setup
             self.js_api.window = self.window
