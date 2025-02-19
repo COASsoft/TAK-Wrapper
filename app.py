@@ -34,6 +34,14 @@ class Api:
         self.window = None
         self.app = app
         self.is_tak_manager = False
+        
+    # Add this to prevent DOM introspection issues
+    def __dict__(self):
+        return {
+            'navigate': self.navigate,
+            'save_file_dialog': self.save_file_dialog,
+            'write_binary_file': self.write_binary_file
+        }
 
     def navigate(self, url):
         """Open TAK Manager in a new window"""
@@ -68,6 +76,46 @@ class Api:
                 time.sleep(0.5)
                 old_window.destroy()
             threading.Thread(target=destroy_old).start()
+
+    def save_file_dialog(self, title, filename, file_types):
+        """Handle file type conversion for different pywebview versions"""
+        converted_types = []
+        if file_types:
+            for ft in file_types:
+                try:
+                    description = str(ft[0])
+                    patterns = ft[1] if isinstance(ft[1], (list, tuple)) else [str(ft[1])]
+                    
+                    # Handle All Files special case
+                    if description.lower() == 'all files':
+                        ext = '*.*' if sys.platform == 'win32' else '*'
+                        converted_types.append(f"{description} ({ext})")
+                        continue
+                    
+                    # Process other patterns
+                    clean_patterns = []
+                    for p in patterns:
+                        clean_p = p.replace('*', '').replace('.', '').strip()
+                        if clean_p:
+                            clean_patterns.append(f'*.{clean_p}')
+                    
+                    if clean_patterns:
+                        ext_list = ';'.join(clean_patterns)
+                        converted_types.append(f"{description} ({ext_list})")
+
+                except (IndexError, TypeError, AttributeError):
+                    continue
+
+        return self.window.create_file_dialog(
+            dialog_type=webview.SAVE_DIALOG,
+            directory=os.path.expanduser('~/Downloads'),
+            save_filename=filename,
+            file_types=converted_types or None
+        )
+
+    def write_binary_file(self, path, data):
+        with open(path, 'wb') as f:
+            f.write(bytes(data))
 
 class TakManagerApp:
     def __init__(self, dev_mode=False, api_port=8000):
@@ -280,6 +328,7 @@ def create_dev_app():
 def main():
     import argparse
     import sys
+    import webview  # Add missing import
     
     # Check if we're running as a packaged executable
     is_packaged = getattr(sys, 'frozen', False)
@@ -325,4 +374,6 @@ def main():
             app.start_api_server()
 
 if __name__ == '__main__':
-    main() 
+    # Enable downloads and create window
+    webview.settings['ALLOW_DOWNLOADS'] = True
+    main()  # Call main instead of creating a separate window 
