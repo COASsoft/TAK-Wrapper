@@ -17,23 +17,10 @@ import threading
 if sys.platform == 'win32':
     import ctypes
 
-def hide_console():
-    """Hide the console window on Windows"""
-    if sys.platform == 'win32':
-        try:
-            # Get console window handle
-            console_window = ctypes.windll.kernel32.GetConsoleWindow()
-            # Hide the console window
-            if console_window:
-                ctypes.windll.user32.ShowWindow(console_window, 0)
-        except Exception as e:
-            print(f"Error hiding console: {e}")
-
 class Api:
     def __init__(self, app):
         self.window = None
         self.app = app
-        self.is_tak_manager = False
         
     # Add this to prevent DOM introspection issues
     def __dict__(self):
@@ -44,73 +31,26 @@ class Api:
         }
 
     def navigate(self, url):
-        """Open TAK Manager in a new window"""
-        for _ in range(10):
+        """Alternative single-window approach"""
+        def load_new_url():
+            time.sleep(1)  # Wait for server
             try:
-                response = requests.get(url)
-                if response.status_code == 200:
-                    break
-            except requests.RequestException:
-                pass
-            time.sleep(1)
+                self.window.load_url(url)
+            except Exception as e:
+                print(f"Navigation failed: {e}")
+
+        threading.Thread(target=load_new_url).start()
+
+    def save_file_dialog(self, filename, file_types):
+        """Convert tuple pairs to pywebview's expected format"""
+        # Convert [("Type", "ext"), ...] to ["Type (*.ext)", ...]
+        converted_types = [f"{desc} (*.{ext})" for desc, ext in file_types]
         
-        old_window = self.window
-        try:
-            self.window = webview.create_window(
-                'TAK Manager',
-                url,
-                width=1300,
-                height=850,
-                js_api=self,
-                text_select=True
-            )
-        except Exception as e:
-            if 'NoneType' not in str(e):  # Only re-raise if it's not the DOM iteration error
-                raise
-            
-        self.is_tak_manager = True
-        self.window.events.closed += self.app.full_cleanup
-        
-        if old_window:
-            def destroy_old():
-                time.sleep(0.5)
-                old_window.destroy()
-            threading.Thread(target=destroy_old).start()
-
-    def save_file_dialog(self, title, filename, file_types):
-        """Handle file type conversion for different pywebview versions"""
-        converted_types = []
-        if file_types:
-            for ft in file_types:
-                try:
-                    description = str(ft[0])
-                    patterns = ft[1] if isinstance(ft[1], (list, tuple)) else [str(ft[1])]
-                    
-                    # Handle All Files special case
-                    if description.lower() == 'all files':
-                        ext = '*.*' if sys.platform == 'win32' else '*'
-                        converted_types.append(f"{description} ({ext})")
-                        continue
-                    
-                    # Process other patterns
-                    clean_patterns = []
-                    for p in patterns:
-                        clean_p = p.replace('*', '').replace('.', '').strip()
-                        if clean_p:
-                            clean_patterns.append(f'*.{clean_p}')
-                    
-                    if clean_patterns:
-                        ext_list = ';'.join(clean_patterns)
-                        converted_types.append(f"{description} ({ext_list})")
-
-                except (IndexError, TypeError, AttributeError):
-                    continue
-
         return self.window.create_file_dialog(
             dialog_type=webview.SAVE_DIALOG,
-            directory=os.path.expanduser('~/Downloads'),
             save_filename=filename,
-            file_types=converted_types or None
+            file_types=converted_types,
+            directory=os.path.expanduser('~/Downloads')
         )
 
     def write_binary_file(self, path, data):
@@ -163,17 +103,11 @@ class TakManagerApp:
         sys.exit(0)
 
     def cleanup_setup(self):
-        """Clean up only setup-related resources"""
+        """Simplified cleanup for single window"""
         if self._is_cleaning_up:
             return
         self._is_cleaning_up = True
         
-        if self.window and not self.js_api.is_tak_manager:
-            try:
-                self.window.destroy()
-            except Exception:
-                pass
-
         if self.dev_mode:
             for process in self.processes:
                 if "vite" in str(process.args):
@@ -185,7 +119,7 @@ class TakManagerApp:
         self._is_cleaning_up = False
 
     def full_cleanup(self):
-        """Clean up all resources before exit"""
+        """Simplified full cleanup"""
         if self._is_cleaning_up:
             return
         self._is_cleaning_up = True
@@ -196,11 +130,8 @@ class TakManagerApp:
             pass
 
         try:
-            for window in webview.windows:
-                try:
-                    window.destroy()
-                except:
-                    pass
+            if self.window:
+                self.window.destroy()
         except Exception:
             pass
 
@@ -309,7 +240,6 @@ class TakManagerApp:
                 if 'NoneType' not in str(e):  # Only re-raise if it's not the DOM iteration error
                     raise
 
-            self.window.events.closed += self.cleanup_setup
             self.js_api.window = self.window
             webview.start(
                 http_server=True,
@@ -335,8 +265,6 @@ def main():
     
     if is_packaged:
         # When packaged, always run in production mode with default port
-        # Hide console window at startup in production mode
-        hide_console()
         app = TakManagerApp(dev_mode=False, api_port=8000)
         try:
             app.run()
