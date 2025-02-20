@@ -9,7 +9,7 @@ import time
 import requests
 import psutil
 from pathlib import Path
-from docker_handler import stop_container, get_resource_path
+from api.handlers.docker_handler import stop_container, get_resource_path
 from api import create_app
 import threading
 

@@ -22,8 +22,11 @@ def get_resource_path(relative_path):
                 # On other platforms, use _MEIPASS
                 base_path = sys._MEIPASS
         else:
-            # We're in development mode
-            base_path = os.path.dirname(os.path.abspath(__file__))
+            # Development mode - go up 2 levels from handlers directory
+            base_path = os.path.abspath(os.path.join(
+                os.path.dirname(__file__),
+                '../..'  # Go from handlers -> api -> project root
+            ))
         
         full_path = os.path.join(base_path, relative_path)
         print(f"Resource path for {relative_path}: {full_path}")

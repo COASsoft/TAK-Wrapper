@@ -93,6 +93,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon if icon.exists() else None,
+    runtime_tmpdir='tak-manager',  # Change '_internal' to your desired directory name
 )
 
 # Platform specific bundle configurations
