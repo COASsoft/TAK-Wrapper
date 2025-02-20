@@ -249,7 +249,7 @@ def start_container(compose_file: str) -> dict:
             'TAK_MANAGER_LOGS_DIR': logs_dir
         }
 
-        # Start container using docker-compose
+        # Start container using docker compose
         print(f"Starting TAK Server container with data dir: {data_dir}")
         result = subprocess.run(
             [docker_bin, 'compose', '-f', compose_file, 'up', '-d'],
