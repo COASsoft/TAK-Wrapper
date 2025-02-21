@@ -24,7 +24,7 @@ def is_port_in_use_command(port: int) -> bool:
             # Windows: use netstat
             cmd = f'netstat -an | findstr :{port}'
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            return port in result.stdout
+            return str(port) in result.stdout
         else:
             # Linux/Mac: use lsof
             cmd = f'lsof -i :{port}'
