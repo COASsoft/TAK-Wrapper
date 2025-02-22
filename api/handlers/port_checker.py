@@ -16,20 +16,24 @@ def is_port_in_use_socket(port: int) -> bool:
             return True
 
 def is_port_in_use_command(port: int) -> bool:
-    """Check if a port is in use using system commands."""
+    """Check if a port is in use using system commands with multiple methods."""
     system = platform.system().lower()
     
     try:
         if system == "windows":
-            # Windows: use netstat
-            cmd = f'netstat -an | findstr :{port}'
+            # Improved Windows check with multiple netstat patterns
+            cmd = (
+                f'netstat -ano | '
+                f'findstr "LISTENING" | '
+                f'findstr /R ":{port} 0.0.0.0:{port} \[::\]:{port}"'
+            )
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            return str(port) in result.stdout
+            return result.returncode == 0
         else:
-            # Linux/Mac: use lsof
-            cmd = f'lsof -i :{port}'
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            return bool(result.stdout.strip())
+            # Improved macOS/Linux check using lsof with state filtering
+            cmd = f'lsof -nP -i :{port} -s TCP:LISTEN >/dev/null 2>&1'
+            result = subprocess.run(cmd, shell=True)
+            return result.returncode == 0
     except subprocess.SubprocessError:
         # If command fails, fallback to socket check
         return is_port_in_use_socket(port)
@@ -48,11 +52,11 @@ def check_port_availability(port: int) -> Tuple[bool, str]:
         if port in RESERVED_PORTS:
             return False, f"Port {port} is reserved for other services"
         
-        # Check using both methods for reliability
-        socket_in_use = is_port_in_use_socket(port)
-        command_in_use = is_port_in_use_command(port)
+        # Check using both methods but require consistent negative for availability
+        socket_available = not is_port_in_use_socket(port)
+        command_available = not is_port_in_use_command(port)
         
-        if socket_in_use or command_in_use:
+        if not (socket_available and command_available):
             return False, f"Port {port} is already in use"
             
         return True, "Port is available"
