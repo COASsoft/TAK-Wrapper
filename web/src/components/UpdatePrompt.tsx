@@ -70,7 +70,7 @@ export const UpdatePrompt: React.FC<UpdatePromptProps> = ({
           <Button 
             onClick={onUpdate}
             className="w-full"
-            variant="default"
+            variant="primary"
           >
             Update Now
           </Button>
