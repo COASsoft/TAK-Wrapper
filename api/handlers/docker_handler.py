@@ -29,10 +29,14 @@ def get_resource_path(relative_path):
             ))
         
         full_path = os.path.join(base_path, relative_path)
-        print(f"Resource path for {relative_path}: {full_path}")
+        # Use print only in development mode or log to file instead of console
+        if not getattr(sys, 'frozen', False):
+            print(f"Resource path for {relative_path}: {full_path}")
         return full_path
     except Exception as e:
-        print(f"Error in get_resource_path: {e}")
+        # Log to file instead of console in production
+        if not getattr(sys, 'frozen', False):
+            print(f"Error in get_resource_path: {e}")
         raise
 
 def start_docker_desktop():
@@ -42,7 +46,30 @@ def start_docker_desktop():
         if system == "darwin":  # macOS
             subprocess.Popen(["open", "-a", "Docker"])
         elif system == "windows":  # Windows
-            subprocess.Popen(["start", "Docker Desktop"], shell=True)
+            # Properly launch Docker Desktop on Windows
+            # Use START command with correct syntax and hide the console window
+            startupinfo = None
+            if hasattr(subprocess, 'STARTUPINFO'):
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = 0  # SW_HIDE
+            
+            # Find Docker Desktop path
+            program_files = os.environ.get('ProgramFiles', 'C:\\Program Files')
+            docker_path = os.path.join(program_files, 'Docker', 'Docker', 'Docker Desktop.exe')
+            
+            if os.path.exists(docker_path):
+                subprocess.Popen([docker_path], startupinfo=startupinfo)
+            else:
+                # Try alternative location
+                program_files_x86 = os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)')
+                docker_path_alt = os.path.join(program_files_x86, 'Docker', 'Docker', 'Docker Desktop.exe')
+                if os.path.exists(docker_path_alt):
+                    subprocess.Popen([docker_path_alt], startupinfo=startupinfo)
+                else:
+                    # Fallback to shell command but hide window
+                    subprocess.Popen('cmd /c start "" "Docker Desktop"', shell=True, 
+                                    startupinfo=startupinfo)
         elif system == "linux":  # Linux
             # Try systemd service first
             try:
@@ -52,14 +79,28 @@ def start_docker_desktop():
                     # Try system-wide service
                     subprocess.run(['sudo', 'systemctl', 'start', 'docker'], check=True)
                 except subprocess.CalledProcessError:
-                    print("Could not start Docker service. Please ensure Docker is installed and the service is enabled.")
+                    if not getattr(sys, 'frozen', False):
+                        print("Could not start Docker service. Please ensure Docker is installed and the service is enabled.")
                     return False
         # Give Docker some time to start
         time.sleep(5)
         return True
     except Exception as e:
-        print(f"Failed to start Docker Desktop/Service: {e}")
+        if not getattr(sys, 'frozen', False):
+            print(f"Failed to start Docker Desktop/Service: {e}")
         return False
+
+# Helper function to create proper startupinfo for Windows to hide console windows
+def get_startupinfo():
+    """Get startupinfo object to hide console windows on Windows"""
+    startupinfo = None
+    if platform.system().lower() == "windows" and hasattr(subprocess, 'STARTUPINFO'):
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0  # SW_HIDE
+        # Also use CREATE_NO_WINDOW flag
+        startupinfo.dwFlags |= subprocess.CREATE_NO_WINDOW
+    return startupinfo
 
 def get_docker_binary():
     """Get the absolute path to the docker binary"""
@@ -131,8 +172,9 @@ def check_docker_installed() -> bool:
     try:
         setup_environment()
         docker_bin = get_docker_binary()
-        subprocess.run([docker_bin, '--version'], capture_output=True, text=True, check=True)
-        subprocess.run([docker_bin, 'compose', 'version'], capture_output=True, text=True, check=True)
+        startupinfo = get_startupinfo()
+        subprocess.run([docker_bin, '--version'], capture_output=True, text=True, check=True, startupinfo=startupinfo)
+        subprocess.run([docker_bin, 'compose', 'version'], capture_output=True, text=True, check=True, startupinfo=startupinfo)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -179,25 +221,31 @@ def find_and_load_docker_image():
         client = docker.from_env()
         try:
             client.images.get(image_name)
-            print(f"Docker image {image_name} already loaded")
+            if not getattr(sys, 'frozen', False):
+                print(f"Docker image {image_name} already loaded")
             return True
         except docker.errors.ImageNotFound:
             # Load Docker image from tar
-            print(f"Loading TAK Server Docker image {image_name} from {image_tar}...")
+            if not getattr(sys, 'frozen', False):
+                print(f"Loading TAK Server Docker image {image_name} from {image_tar}...")
             setup_environment()
             docker_bin = get_docker_binary()
+            startupinfo = get_startupinfo()
             load_result = subprocess.run(
                 [docker_bin, 'load', '-i', str(image_tar)],
                 capture_output=True,
-                text=True
+                text=True,
+                startupinfo=startupinfo
             )
             if load_result.returncode != 0:
                 raise Exception(f"Failed to load Docker image: {load_result.stderr}")
-            print("Docker image loaded successfully")
+            if not getattr(sys, 'frozen', False):
+                print("Docker image loaded successfully")
             return True
             
     except Exception as e:
-        print(f"Error loading Docker image: {e}")
+        if not getattr(sys, 'frozen', False):
+            print(f"Error loading Docker image: {e}")
         return False
 
 def start_container(compose_file: str) -> dict:
@@ -212,7 +260,8 @@ def start_container(compose_file: str) -> dict:
 
         # Get the correct compose file path using get_resource_path
         compose_file = get_resource_path(compose_file)
-        print(f"Using compose file: {compose_file}")
+        if not getattr(sys, 'frozen', False):
+            print(f"Using compose file: {compose_file}")
         
         # Get data directory and ensure it exists with proper permissions
         data_dir = get_app_data_dir()
@@ -250,15 +299,20 @@ def start_container(compose_file: str) -> dict:
         }
 
         # Start container using docker compose
-        print(f"Starting TAK Server container with data dir: {data_dir}")
+        if not getattr(sys, 'frozen', False):
+            print(f"Starting TAK Server container with data dir: {data_dir}")
+        
+        startupinfo = get_startupinfo()
         result = subprocess.run(
             [docker_bin, 'compose', '-f', compose_file, 'up', '-d'],
             capture_output=True,
             text=True,
-            env=env_vars
+            env=env_vars,
+            startupinfo=startupinfo
         )
         if result.returncode != 0:
-            print(f"Docker compose error: {result.stderr}")  # Add error logging
+            if not getattr(sys, 'frozen', False):
+                print(f"Docker compose error: {result.stderr}")
             return {"success": False, "error": result.stderr}
 
         port = os.environ.get("BACKEND_PORT", "")
@@ -267,7 +321,8 @@ def start_container(compose_file: str) -> dict:
 
         return {"success": True, "port": port}
     except Exception as e:
-        print(f"Error in start_container: {str(e)}")  # Add error logging
+        if not getattr(sys, 'frozen', False):
+            print(f"Error in start_container: {str(e)}")
         return {"success": False, "error": str(e)}
 
 def stop_container(compose_file: str) -> dict:
@@ -279,10 +334,12 @@ def stop_container(compose_file: str) -> dict:
         # Convert compose_file path to use correct path separators for the OS
         compose_file = str(Path(compose_file))
         
+        startupinfo = get_startupinfo()
         result = subprocess.run(
             [docker_bin, 'compose', '-f', compose_file, 'down'],
             capture_output=True,
-            text=True
+            text=True,
+            startupinfo=startupinfo
         )
         if result.returncode != 0:
             return {"success": False, "error": result.stderr}
