@@ -7,8 +7,14 @@ import os
 block_cipher = None
 
 # Get the root directory and version from environment
-root_dir = Path('.')
+root_dir = Path('.').resolve()  # Make sure we have absolute path
 version = os.environ.get('VERSION') 
+
+# Define output directories
+dist_dir = root_dir / 'dist'
+work_dir = root_dir / 'build'
+os.makedirs(dist_dir, exist_ok=True)
+os.makedirs(work_dir, exist_ok=True)
 
 # Define platform-specific settings
 if sys.platform == 'darwin':  # macOS
@@ -17,7 +23,7 @@ if sys.platform == 'darwin':  # macOS
     bundle_id = 'com.takmanager.app'
 elif sys.platform == 'win32':  # Windows
     icon = root_dir / 'resources' / 'icon.ico'
-    name = 'TAK Manager'
+    name = 'takmanager'  # Simplified name without caps
 else:  # Linux
     icon = root_dir / 'resources' / 'icon.png'
     name = 'tak-manager'
@@ -81,19 +87,18 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name=name,
-    debug=False,  # Disable debug
+    debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    windowed=True,
-    console=True,  # Enable console for proper process handling
+    console=False,
     disable_windowed_traceback=False,
-    argv_emulation=False,  # Disable argv emulation to fix argument parsing
+    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=icon if icon.exists() else None,
-    runtime_tmpdir='tak-manager',  # Change '_internal' to your desired directory name
+    icon=[str(icon)] if icon.exists() else None,
+    runtime_tmpdir=None,  # Changed from 'tak-manager' to None
 )
 
 # Platform specific bundle configurations

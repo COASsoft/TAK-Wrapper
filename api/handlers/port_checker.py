@@ -25,7 +25,7 @@ def is_port_in_use_command(port: int) -> bool:
             cmd = (
                 f'netstat -ano | '
                 f'findstr "LISTENING" | '
-                f'findstr /R ":{port} 0.0.0.0:{port} \[::\]:{port}"'
+                f'findstr /R ":{port} 0.0.0.0:{port} \\[::\\]:{port}"'
             )
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             return result.returncode == 0

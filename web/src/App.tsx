@@ -35,6 +35,10 @@ export const App: React.FC = () => {
   const [updateCheckRetries, setUpdateCheckRetries] = useState(0);
   const MAX_RETRIES = 3;
 
+  // Add docker check attempts state
+  const [dockerCheckAttempts, setDockerCheckAttempts] = useState(0);
+  const MAX_DOCKER_CHECK_ATTEMPTS = 10;  // Maximum number of attempts to check Docker status
+
   // Wait for pywebview API to be ready
   useEffect(() => {
     const checkApi = () => {
@@ -138,6 +142,7 @@ export const App: React.FC = () => {
         setIsDockerRunning(running);
 
         if (running) {
+          setDockerCheckAttempts(0);  // Reset attempts when Docker is running
           setStatusMessage('Checking configuration...');
           const config = await api.getConfig();
           if (config.TAK_SERVER_INSTALL_DIR && config.BACKEND_PORT) {
@@ -153,8 +158,14 @@ export const App: React.FC = () => {
               window.pywebview.api.navigate(`http://localhost:${result.port}`);
             }
           }
+        } else if (dockerCheckAttempts < MAX_DOCKER_CHECK_ATTEMPTS) {
+          // If Docker is not running and we haven't exceeded max attempts, retry after delay
+          setStatusMessage(`Waiting for Docker to start`);
+          setDockerCheckAttempts(prev => prev + 1);
+          setTimeout(checkDocker, 3000);  // Retry after 3 seconds
         } else {
-          setStatusMessage('Waiting for Docker to start...');
+          // If we've exceeded max attempts, show error
+          setError('Docker is not running after multiple attempts. Please ensure Docker Desktop is started and try again.');
         }
       }
     } catch (error) {
@@ -165,8 +176,10 @@ export const App: React.FC = () => {
       }
       console.error('Failed to check Docker:', error);
     } finally {
-      setIsLoading(false);
-      setIsContainerStarting(false);
+      if (isDockerRunning) {  // Only set loading to false if Docker is running
+        setIsLoading(false);
+        setIsContainerStarting(false);
+      }
     }
   };
 

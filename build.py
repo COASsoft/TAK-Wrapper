@@ -83,7 +83,7 @@ export PYTHONUNBUFFERED=1
 export PYTHONDONTWRITEBYTECODE=1
 
 # Run the application without any arguments
-./TAK\ Manager
+./TAK\\ Manager
 """)
         # Make it executable
         debug_script.chmod(0o755)
@@ -149,4 +149,4 @@ def build_app():
         sys.exit(1)
 
 if __name__ == "__main__":
-    build_app() 
+    build_app()

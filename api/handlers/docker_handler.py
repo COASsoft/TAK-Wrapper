@@ -181,12 +181,19 @@ def check_docker_installed() -> bool:
 
 def check_docker_running() -> bool:
     """Check if Docker daemon is running"""
-    try:
-        client = docker.from_env()
-        client.ping()
-        return True
-    except docker.errors.DockerException:
-        return False
+    max_retries = 3
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            client = docker.from_env()
+            client.ping()
+            return True
+        except docker.errors.DockerException:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                continue
+            return False
 
 def find_and_load_docker_image():
     """Find and load the TAK Manager Docker image"""
