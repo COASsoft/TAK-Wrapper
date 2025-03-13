@@ -5,7 +5,7 @@
 #define MyAppVersion "v3.0.0"
 #define MyAppPublisher "Jacob Olsen"
 #define MyAppURL "https://recce.ubuntuserver.buzz"
-#define MyAppExeName "TAK Manager.exe"
+#define MyAppExeName "takmanager.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -49,15 +49,15 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "dist\TAK Manager\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\TAK Manager\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\takmanager\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\takmanager\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Dirs]
 Name: "{app}"; Permissions: users-full
 Name: "{app}\_internal"; Permissions: users-full
-Name: "{localappdata}\TAK Manager"; Permissions: users-full
-Name: "{localappdata}\TAK Manager\config"; Permissions: users-full
+Name: "{localappdata}\takmanager"; Permissions: users-full
+Name: "{localappdata}\takmanager\config"; Permissions: users-full
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
