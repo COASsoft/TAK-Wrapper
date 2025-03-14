@@ -66,7 +66,7 @@ export const UpdatePrompt: React.FC<UpdatePromptProps> = ({
             </div>
           )}
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 gap-2">
           <Button 
             onClick={onUpdate}
             className="w-full"
