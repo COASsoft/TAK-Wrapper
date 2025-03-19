@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "TAK Manager"
-#define MyAppVersion "v3.1.0"
+#define MyAppVersion "v3.1.1"
 #define MyAppPublisher "Jacob Olsen"
 #define MyAppURL "https://recce.ubuntuserver.buzz"
 #define MyAppExeName "takmanager.exe"

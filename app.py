@@ -229,7 +229,7 @@ class TakManagerApp:
             frontend_url = "http://localhost:3000" if self.dev_mode else f"http://localhost:{self.api_port}"
             try:
                 self.window = webview.create_window(
-                    'TAK Manager v3.1.0',
+                    'TAK Manager v3.1.1',
                     url=frontend_url,
                     width=1300,
                     height=850,
