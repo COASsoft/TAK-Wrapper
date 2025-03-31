@@ -4,7 +4,7 @@
 #define MyAppName "TAK Manager"
 #define MyAppVersion "v3.1.2"
 #define MyAppPublisher "Jacob Olsen"
-#define MyAppURL "https://recce.ubuntuserver.buzz"
+#define MyAppURL "https://github.com/JShadowNull/TAK-Manager"
 #define MyAppExeName "takmanager.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"

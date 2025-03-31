@@ -8,6 +8,10 @@ import { BackgroundWrapper } from './components/BackgroundWrapper';
 import { api } from './lib/api';
 import type {} from './types/global';
 
+// Define constants for URLs
+const GITHUB_RELEASES_URL = 'https://github.com/JShadowNull/TAK-Manager/releases/latest';
+const DOCKER_DESKTOP_URL = 'https://www.docker.com/products/docker-desktop/';
+
 export const App: React.FC = () => {
   const [isDockerInstalled, setIsDockerInstalled] = useState<boolean | null>(null);
   const [isDockerRunning, setIsDockerRunning] = useState<boolean | null>(null);
@@ -119,7 +123,7 @@ export const App: React.FC = () => {
   const handleUpdate = () => {
     // Open the release page in the default browser
     if (window.pywebview && window.pywebview.api) {
-      api.openExternalUrl('https://github.com/JShadowNull/TAK-Manager/releases/latest');
+      api.openExternalUrl(GITHUB_RELEASES_URL);
     }
   };
 
@@ -209,7 +213,7 @@ export const App: React.FC = () => {
     if (!isApiReady) return;
     
     try {
-      const result = await api.openExternalUrl('https://www.docker.com/products/docker-desktop/');
+      const result = await api.openExternalUrl(DOCKER_DESKTOP_URL);
       if (!result.success) {
         setError('Failed to open Docker installation page');
       }
