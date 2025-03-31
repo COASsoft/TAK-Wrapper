@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '../ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
 import { BackgroundWrapper } from './BackgroundWrapper';
 import { ScrollArea } from '../ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
@@ -66,22 +66,20 @@ export const UpdatePrompt: React.FC<UpdatePromptProps> = ({
             </div>
           )}
         </CardHeader>
-        <CardContent className="space-y-2 gap-2">
+        <CardFooter className="gap-2 items-center">
           <Button 
             onClick={onUpdate}
-            className="w-full"
             variant="primary"
           >
             Update Now
           </Button>
           <Button 
             onClick={onSkip}
-            className="w-full"
             variant="outline"
           >
             Skip Update
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   </BackgroundWrapper>

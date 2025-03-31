@@ -118,15 +118,15 @@ def get_current_version():
 
 @router.get("/check-update")
 async def check_update():
-    """Check for updates from Gitea repository"""
+    """Check for updates from GitHub repository"""
     try:
         # Get current version from version.txt
         current_version = get_current_version()
 
         try:
-            # Fetch latest release from Gitea API
+            # Fetch latest release from GitHub API
             response = requests.get(
-                'https://gitea.ubuntuserver.buzz/api/v1/repos/Jake/Tak-Manager/releases/latest',
+                'https://api.github.com/repos/JShadowNull/TAK-Manager/releases/latest',
                 timeout=10
             )
             response.raise_for_status()
@@ -185,8 +185,8 @@ async def check_update():
         }
 
 def check_network_connectivity():
-    """Check if we can reach the Gitea server"""
-    host = "gitea.ubuntuserver.buzz"
+    """Check if we can reach the GitHub server"""
+    host = "github.com"
     try:
         # Try DNS resolution first
         socket.gethostbyname(host)

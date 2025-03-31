@@ -119,7 +119,7 @@ export const App: React.FC = () => {
   const handleUpdate = () => {
     // Open the release page in the default browser
     if (window.pywebview && window.pywebview.api) {
-      api.openExternalUrl('https://gitea.ubuntuserver.buzz/Jake/Tak-Manager/releases/latest');
+      api.openExternalUrl('https://github.com/JShadowNull/TAK-Manager/releases/latest');
     }
   };
 
