@@ -25,9 +25,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start:dev": "cd .. && python app.py --dev",
-    "start:prod": "cd .. && python app.py",
-    "package": "cd .. && python build.py"
+    "start:dev": "cd .. && poetry run python app.py --dev",
+    "start:prod": "cd .. && poetry run python app.py",
+    "package": "cd .. && poetry run python build.py"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",
