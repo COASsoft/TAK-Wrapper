@@ -45,7 +45,6 @@ web/coverage/
 # Docker
 docker/*.tar.gz
 .docker/
-docker-compose.prod.yml  # Exclude since it will be symlinked
 
 # Logs
 *.log

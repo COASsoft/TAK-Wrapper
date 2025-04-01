@@ -59,7 +59,7 @@ class Api:
 
 class TakManagerApp:
     def __init__(self, dev_mode=False, api_port=8000):
-        self.compose_file = str(Path(get_resource_path("docker-compose.prod.yml")))
+        self.compose_file = str(Path(get_resource_path("docker-compose.yml")))
         self.window = None
         self.web_dir = Path(get_resource_path("web"))
         self.dev_mode = dev_mode

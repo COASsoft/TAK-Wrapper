@@ -41,7 +41,7 @@ datas = [
     *docker_files,  # Add any Docker images that were found
     ('web/dist', 'web/dist'),  # Built web frontend
     ('.env', '.'),  # Environment template
-    ('docker-compose.prod.yml', '.'),  # Docker compose file
+    ('docker-compose.yml', '.'),  # Docker compose file
     ('version.txt', '.'),  # Version file
 ]
 

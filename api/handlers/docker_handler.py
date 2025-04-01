@@ -311,7 +311,7 @@ def start_container(compose_file: str) -> dict:
         
         startupinfo = get_startupinfo()
         result = subprocess.run(
-            [docker_bin, 'compose', '-f', compose_file, 'up', '-d'],
+            [docker_bin, 'compose', '-f', compose_file, 'up', 'prod', '-d'],
             capture_output=True,
             text=True,
             env=env_vars,

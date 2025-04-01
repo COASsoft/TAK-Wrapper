@@ -20,7 +20,7 @@ import platform
 from pathlib import Path
 
 router = APIRouter()
-compose_file = "docker-compose.prod.yml"
+compose_file = "docker-compose.yml"
 
 class ConfigData(BaseModel):
     install_dir: str
