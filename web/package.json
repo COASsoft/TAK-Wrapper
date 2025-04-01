@@ -27,7 +27,8 @@
     "preview": "vite preview",
     "start:dev": "cd .. && poetry run python app.py --dev",
     "start:prod": "cd .. && poetry run python app.py",
-    "package": "cd .. && poetry run python build.py"
+    "package": "cd .. && poetry run python build.py",
+    "merge": "cd .. && git checkout main && git pull origin main && git merge dev && git push origin main && git checkout dev"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",
