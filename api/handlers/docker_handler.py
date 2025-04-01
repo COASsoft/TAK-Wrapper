@@ -272,11 +272,9 @@ def start_container(compose_file: str) -> dict:
         
         # Get data directory and ensure it exists with proper permissions
         data_dir = get_app_data_dir()
-        config_dir = os.path.join(data_dir, 'config')
-        logs_dir = os.path.join(data_dir, 'logs')
         
         # Ensure all required directories exist
-        for directory in [data_dir, config_dir, logs_dir]:
+        for directory in [data_dir]:
             os.makedirs(directory, exist_ok=True)
             # Ensure directory has proper permissions (read/write for user)
             os.chmod(directory, 0o755)
@@ -289,7 +287,7 @@ def start_container(compose_file: str) -> dict:
             shutil.copy2(env_src, env_dest)
             # Ensure env file has proper permissions
             os.chmod(env_dest, 0o644)
-        
+
         # Load environment variables from the persistent env file
         with open(env_dest, 'r') as f:
             for line in f:
@@ -301,8 +299,6 @@ def start_container(compose_file: str) -> dict:
         env_vars = {
             **os.environ,
             'TAK_MANAGER_DATA_DIR': data_dir,
-            'TAK_MANAGER_CONFIG_DIR': config_dir,
-            'TAK_MANAGER_LOGS_DIR': logs_dir
         }
 
         # Start container using docker compose

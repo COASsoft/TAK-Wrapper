@@ -45,6 +45,7 @@ web/coverage/
 # Docker
 docker/*.tar.gz
 .docker/
+docker/
 
 # Logs
 *.log
