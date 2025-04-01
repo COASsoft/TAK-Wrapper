@@ -7,7 +7,7 @@ import os
 block_cipher = None
 
 # Get the root directory and version from environment
-root_dir = Path('.').resolve()  # Make sure we have absolute path
+root_dir = Path('.').resolve()
 version = os.environ.get('VERSION') 
 
 # Define output directories
@@ -55,21 +55,6 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=[
-        'uvicorn.logging',
-        'uvicorn.loops',
-        'uvicorn.loops.auto',
-        'uvicorn.protocols',
-        'uvicorn.protocols.http',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.websockets',
-        'uvicorn.protocols.websockets.auto',
-        'uvicorn.lifespan',
-        'uvicorn.lifespan.on',
-        'webview.platforms.cocoa',
-        'webview.platforms.win32',
-        'webview.platforms.gtk',
-    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -93,7 +78,6 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,
-    disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,

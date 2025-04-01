@@ -35,6 +35,12 @@ def build_frontend():
     logging.info("Building frontend...")
     npm_cmd = 'npm.cmd' if sys.platform == 'win32' else 'npm'
     try:
+        # Clean previous build
+        dist_dir = web_dir / "dist"
+        if dist_dir.exists():
+            logging.info("Cleaning previous frontend build...")
+            shutil.rmtree(dist_dir)
+
         # Install dependencies
         subprocess.run([npm_cmd, 'install'], cwd=web_dir, check=True)
         # Build frontend
@@ -45,11 +51,22 @@ def build_frontend():
 
 def clean_build():
     """Clean build directories"""
-    dirs_to_clean = ['build', 'dist']
+    dirs_to_clean = ['build', 'dist', '__pycache__']
     for dir_name in dirs_to_clean:
         if os.path.exists(dir_name):
             logging.info(f"Cleaning {dir_name}...")
             shutil.rmtree(dir_name)
+    
+    # Remove any .spec files if not using our specific one
+    for spec_file in Path('.').glob('*.spec'):
+        if spec_file.name != 'tak-manager.spec':
+            logging.info(f"Removing {spec_file}...")
+            spec_file.unlink()
+            
+    # Clean pycache in subdirectories
+    for pycache_dir in Path('.').glob('**/__pycache__'):
+        logging.info(f"Cleaning {pycache_dir}...")
+        shutil.rmtree(pycache_dir)
 
 def ensure_resources():
     """Ensure all required resources exist"""
@@ -107,7 +124,7 @@ def build_app():
 
         # Run PyInstaller
         logging.info("Building application with PyInstaller...")
-        subprocess.run(['pyinstaller', 'tak-manager.spec'], check=True)
+        subprocess.run(['pyinstaller', 'tak-manager.spec', '--clean'], check=True)
 
         # Create debug launch script
         create_debug_script()
