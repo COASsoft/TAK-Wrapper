@@ -1,3 +1,4 @@
 [submodule "TAK-Wrapper"]
-	path = TAK-Wrapper
-	url = https://github.com/COASsoft/TAK-Wrapper.git
+    path = TAK-Wrapper
+    url = https://github.com/COASsoft/TAK-Wrapper.git
+
